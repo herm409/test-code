@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Associate Deadline Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html {
+            scroll-behavior: smooth; 
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; 
+        }
+        .container {
+            max-width: 1800px; 
+            margin: 0 auto;
+            padding: 4px; 
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 16px; 
+            margin-bottom: 16px;
+        }
+        .table-responsive {
+            overflow-x: auto;
+            max-height: 60vh; 
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto; 
+        }
+       
+        #associatesTable thead {
+            display: none; 
+        }
+        #associatesTable tbody tr {
+            display: block;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem; 
+            margin-bottom: 1rem; 
+            padding: 0.75rem; 
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); 
+        }
+        #associatesTable tbody td {
+            display: block;
+            text-align: right; 
+            padding-left: 50%;  
+            position: relative;
+            border-bottom: 1px dotted #eee; 
+            padding-top: 0.5rem; 
+            padding-bottom: 0.5rem;
+            white-space: normal; 
+        }
+        #associatesTable tbody td:last-child {
+            border-bottom: none; 
+        }
+        #associatesTable tbody td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 0.75rem; 
+            width: 45%;    
+            padding-right: 0.5rem; 
+            font-weight: 600;
+            text-align: left;
+            white-space: nowrap;
+            color: #4b5563; 
+        }
+
+        @media (max-width: 767.98px) {
+            #associatesTable tbody tr td:first-child { 
+                font-weight: 700; 
+                font-size: 1.125rem; 
+            }
+        }
+
+
+        @media (min-width: 768px) { /* md breakpoint */
+            .container { padding: 20px; }
+            .card { padding: 24px; }
+            #associatesTable thead { display: table-header-group; }
+            #associatesTable tbody tr {
+                display: table-row; border: none; border-radius: 0;
+                margin-bottom: 0; padding: 0; box-shadow: none;
+            }
+            #associatesTable tbody td {
+                display: table-cell; text-align: left; padding-left: 12px; 
+                position: static; border-bottom: 1px solid #e5e7eb; 
+                padding-top: 10px; padding-bottom: 10px; white-space: nowrap; 
+            }
+            #associatesTable tbody td.wrap { white-space: normal; }
+            #associatesTable tbody td::before { display: none; }
+
+            th {
+                background-color: #f9fafb; font-weight: 600; color: #374151; 
+                position: sticky; top: 0; z-index: 10;       
+            }
+            .th-sticky-left {
+                position: sticky; left: 0; z-index: 15; background-color: #f9fafb; 
+            }
+            .td-sticky-left {
+                position: sticky; left: 0; z-index: 5; 
+            }
+             tr:hover td { background-color: #bfdbfe !important; }
+        }
+        
+        th.wrap, td.wrap { white-space: normal; min-width: 250px; vertical-align: top; }
+        
+        .cell-green { background-color: #dcfce7; } 
+        .cell-yellow { background-color: #fef9c3; } 
+        .cell-red { background-color: #fee2e2; } 
+
+        .file-input-label {
+            display: inline-block; padding: 10px 15px; background-color: #3b82f6; 
+            color: white; border-radius: 6px; cursor: pointer; transition: background-color 0.2s;
+        }
+        .file-input-label:hover { background-color: #2563eb; }
+        #csvFileInput { display: none; }
+        .info-box {
+            background-color: #e0f2fe; border-left: 4px solid #0ea5e9; padding: 16px;
+            margin-bottom: 20px; border-radius: 4px; color: #0369a1; 
+        }
+        .error-box {
+            background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 16px;
+            margin-bottom: 20px; border-radius: 4px; color: #b91c1c; 
+        }
+        .no-data-message { text-align: center; padding: 20px; color: #6b7280; }
+        .status-yes { color: #16a34a; font-weight: 500; }
+        .status-no { color: #dc2626; font-weight: 500; }
+        .status-na { color: #6b7280; font-style: italic; }
+        .met { color: #16a34a; }
+        .needed { color: #f59e0b; }
+        .days-left-critical { color: #dc2626; font-weight: bold; }
+        .days-left-warning { color: #f59e0b; font-weight: bold; }
+
+        #focusAreaCard ul { list-style-type: disc; padding-left: 1.25rem; margin-top: 0.5rem; }
+        #focusAreaCard ul li { 
+            margin-bottom: 0.5rem; 
+            display: flex; 
+            align-items: center; 
+            flex-wrap: wrap; 
+        }
+        #focusAreaCard ul li .focus-text-content { 
+            margin-right: 0.5rem; 
+            flex-shrink: 1; 
+        }
+        #focusAreaCard h3 { 
+            border-bottom: 1px solid #e5e7eb; padding-bottom: 0.25rem; 
+            margin-bottom: 0.75rem; 
+        }
+         #focusAreaCard .ed-group-header { 
+            font-weight: 600; 
+            color: #1f2937; 
+            cursor: pointer;
+            padding: 0.25rem 0;
+            margin-top: 0.5rem;
+            border-bottom: 1px dashed #d1d5db; 
+        }
+        #focusAreaCard .ed-group-header:hover {
+            background-color: #f9fafb; 
+        }
+        #focusAreaCard .ed-associate-list {
+            padding-left: 1rem; 
+        }
+        #focusAreaCard .toggle-arrow {
+            display: inline-block;
+            margin-left: 0.25rem;
+            transition: transform 0.2s ease-in-out;
+        }
+        #focusAreaCard .ed-group-header.collapsed .toggle-arrow {
+            transform: rotate(-90deg);
+        }
+
+
+        #focusAreaCard .grid { grid-template-columns: 1fr; }
+        @media (min-width: 768px) { 
+            #focusAreaCard .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        .focus-link, .table-phone-link { 
+            color: #2563eb; 
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .focus-link:hover, .table-phone-link:hover {
+            color: #1d4ed8; 
+        }
+        .action-btn { 
+            display: inline-flex; 
+            align-items: center;
+            justify-content: center;
+            padding: 0.375rem; 
+            width: 2rem; 
+            height: 2rem; 
+            color: white;
+            border-radius: 0.375rem; 
+            text-decoration: none;
+            margin-left: 0.25rem; 
+            transition: background-color 0.2s;
+        }
+        .action-btn svg {
+            width: 1rem; 
+            height: 1rem; 
+        }
+        .call-now-btn {
+            background-color: #16a34a; 
+        }
+        .call-now-btn:hover {
+            background-color: #15803d; 
+        }
+        .text-now-btn {
+            background-color: #2563eb; 
+        }
+        .text-now-btn:hover {
+            background-color: #1d4ed8; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto">
+        <header class="text-center py-6 md:py-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Associate Deadline & Requirements Tracker</h1>
+            <p class="text-md md:text-lg text-gray-600 mt-2">Upload CSV to track deadlines, requirements, and Fast Start attendance.</p>
+        </header>
+
+        <div class="card">
+            <h2 class="text-xl md:text-2xl font-semibold text-gray-700 mb-4">Upload Associate Data</h2>
+            <div class="mb-6">
+                <label for="csvFileInput" class="file-input-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                    Choose CSV File
+                </label>
+                <input type="file" id="csvFileInput" accept=".csv">
+                <span id="fileName" class="ml-3 text-gray-500">No file chosen</span>
+            </div>
+            <div id="calculationDateInfo" class="info-box hidden"></div>
+            <div id="errorDisplay" class="error-box hidden"></div>
+        </div>
+
+        <div class="card hidden" id="focusAreaCard">
+            <h2 class="text-xl md:text-2xl font-semibold text-gray-700 mb-4">Focus Area</h2>
+            
+            <div id="urgentDeadlinesSection" class="mb-6">
+                <h3 class="text-lg md:text-xl font-semibold text-red-600 mb-2">Urgent Deadlines (Next 7 Days)</h3>
+                <div id="urgentDeadlinesContent"></div>
+                <p id="noUrgentDeadlines" class="text-gray-500 text-sm hidden">No associates with urgent deadlines.</p>
+            </div>
+        
+            <div id="closeToRequirementsSection" class="mb-6">
+                <h3 class="text-lg md:text-xl font-semibold text-blue-600 mb-2">Close to Requirements</h3>
+                <div class="grid md:grid-cols-2 gap-x-6 gap-y-4">
+                    <div>
+                        <h4 class="text-md md:text-lg font-medium text-gray-700 mb-1">Fast Start (20-Day)</h4>
+                        <div id="closeToFastStartContent"></div>
+                        <p id="noCloseToFastStart" class="text-gray-500 text-sm hidden">No associates currently close to Fast Start.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-md md:text-lg font-medium text-gray-700 mb-1">Manager (45-Day)</h4>
+                        <div id="closeToManagerContent"></div>
+                        <p id="noCloseToManager" class="text-gray-500 text-sm hidden">No associates currently close to Manager.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="metRequirementsSection">
+                <h3 class="text-lg md:text-xl font-semibold text-green-600 mb-2">Met Requirements (Production & FS Class)</h3>
+                <div id="metRequirementsContent"></div>
+                <p id="noMetRequirements" class="text-gray-500 text-sm hidden">No associates have fully met requirements yet.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="text-xl md:text-2xl font-semibold text-gray-700 mb-4">Associate Information</h2>
+            <div class="table-responsive">
+                <table id="associatesTable">
+                    <thead>
+                        <tr>
+                            <th class="th-sticky-left">Name</th>
+                            <th>Prod. Date</th>
+                            <th>FS Training Date</th>
+                            <th>Fast Start Days Left</th> 
+                            <th class="wrap">20-Day Target Status & FS Deadline</th>
+                            <th>Home Phone</th>
+                            <th>Manager Days Left</th> 
+                            <th class="wrap">45-Day Target Status & FS Deadline</th>
+                            <th>FS Attended (20/45 Day)?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="9" class="no-data-message">Upload a CSV file to see associate data.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="text-center py-6 mt-8">
+            <p class="text-sm text-gray-500">&copy; <span id="currentYear"></span> Associate Tracker. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        const csvFileInput = document.getElementById('csvFileInput');
+        const associatesTableBody = document.querySelector('#associatesTable tbody');
+        const calculationDateInfo = document.getElementById('calculationDateInfo');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const fileNameDisplay = document.getElementById('fileName');
+        
+        const focusAreaCard = document.getElementById('focusAreaCard');
+        const urgentDeadlinesContent = document.getElementById('urgentDeadlinesContent');
+        const noUrgentDeadlines = document.getElementById('noUrgentDeadlines');
+        const closeToFastStartContent = document.getElementById('closeToFastStartContent');
+        const noCloseToFastStart = document.getElementById('noCloseToFastStart');
+        const closeToManagerContent = document.getElementById('closeToManagerContent');
+        const noCloseToManager = document.getElementById('noCloseToManager');
+        const metRequirementsContent = document.getElementById('metRequirementsContent');
+        const noMetRequirements = document.getElementById('noMetRequirements');
+
+
+        csvFileInput.addEventListener('change', handleFileUpload);
+
+        focusAreaCard.addEventListener('click', function(event) {
+            let target = event.target;
+            
+            if (target.classList.contains('ed-group-header') || target.parentElement.classList.contains('ed-group-header')) {
+                const header = target.classList.contains('ed-group-header') ? target : target.parentElement;
+                const list = header.nextElementSibling; 
+                if (list && list.classList.contains('ed-associate-list')) {
+                    list.classList.toggle('hidden');
+                    header.classList.toggle('collapsed');
+                }
+                return; 
+            }
+
+            target = event.target; 
+            while (target != null && !target.classList.contains('focus-link') && !target.closest('.action-btn')) {
+                target = target.parentElement;
+            }
+
+            if (target) {
+                if (target.classList.contains('focus-link')) {
+                    event.preventDefault(); 
+                    const targetId = target.getAttribute('data-target-id');
+                    if (targetId) {
+                        const targetElement = document.getElementById(targetId);
+                        if (targetElement) {
+                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            targetElement.classList.add('bg-blue-200', 'transition-all', 'duration-1000');
+                            setTimeout(() => {
+                                targetElement.classList.remove('bg-blue-200', 'transition-all', 'duration-1000');
+                            }, 2000); 
+                        } else {
+                            console.warn('Target element for focus link not found:', targetId);
+                        }
+                    }
+                } 
+            }
+        });
+
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                fileNameDisplay.textContent = 'No file chosen';
+                showError('No file selected.');
+                clearAllData();
+                return;
+            }
+            if (file.type !== 'text/csv' && !file.name.toLowerCase().endsWith('.csv')) {
+                fileNameDisplay.textContent = file.name + ' (Invalid type)';
+                showError('Invalid file type. Please upload a CSV file.');
+                clearAllData();
+                return;
+            }
+            fileNameDisplay.textContent = file.name;
+            hideError(); 
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try { processCSV(e.target.result); }
+                catch (err) {
+                    console.error("Error reading or processing file:", err);
+                    showError(`Error processing file: ${err.message}`);
+                    clearAllData();
+                }
+            };
+            reader.onerror = () => {
+                console.error("FileReader error");
+                showError('Error reading the file.');
+                clearAllData();
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            clearTable();
+            clearFocusArea();
+            focusAreaCard.classList.add('hidden');
+            calculationDateInfo.classList.add('hidden');
+        }
+
+        function parseCSVLine(line) {
+            const values = []; let currentVal = ''; let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    if (inQuotes && i + 1 < line.length && line[i+1] === '"') { currentVal += '"'; i++; } 
+                    else { inQuotes = !inQuotes; }
+                } else if (char === ',' && !inQuotes) { values.push(currentVal.trim()); currentVal = ''; } 
+                else { currentVal += char; }
+            }
+            values.push(currentVal.trim()); return values;
+        }
+
+        function parseGenericDate(dateString) {
+            if (!dateString || dateString.trim() === "0" || String(dateString).length !== 8) return null;
+            const year = parseInt(String(dateString).substring(0, 4), 10);
+            const month = parseInt(String(dateString).substring(4, 6), 10) - 1;
+            const day = parseInt(String(dateString).substring(6, 8), 10);
+            if (isNaN(year) || isNaN(month) || isNaN(day) || year < 1900 || year > 2100) {
+                console.warn(`Invalid date components for: ${dateString}`); return null;
+            }
+            const date = new Date(year, month, day);
+            if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+                date.setHours(0,0,0,0); return date;
+            }
+            console.warn(`Date object creation failed or mismatch for: ${dateString}`); return null;
+        }
+        
+        function getNumericValue(valueStr) {
+            if (valueStr === null || typeof valueStr === 'undefined' || String(valueStr).trim() === "") return 0;
+            const num = parseFloat(String(valueStr)); return isNaN(num) ? 0 : num;
+        }
+
+        function sanitizePhoneNumber(phone) {
+            if (!phone) return '';
+            return String(phone).replace(/\D/g, ''); 
+        }
+
+        function processCSV(csvContent) {
+            const lines = csvContent.split(/\r\n|\n/);
+            if (lines.length <= 1) { showError('CSV file is empty or has no data rows.'); clearAllData(); return; }
+
+            const headers = parseCSVLine(lines[0]);
+            const colConfig = {
+                associateIdInternal: 'associate id', name: 'name', productionDate: 'production date', 
+                fsTrainingDate: 'fast$tart training date', endDate20DayRaw: '20 day period - end date', 
+                endDate45DayRaw: '45 day period - end date', orgPremiumITD: 'org. premium itd',
+                personalMemberships: 'personal memberships', persRecruitsITD: 'pers. recruits itd',
+                persPremiumITD: 'pers. premium itd',
+                homePhone: 'home phone',
+                edName: 'ed name' 
+            };
+            const colIndices = {}; let missingCritical = []; let missingOptional = [];
+            for (const key in colConfig) {
+                const idx = headers.findIndex(h => h.toLowerCase().trim() === colConfig[key]);
+                colIndices[key] = idx;
+                if (idx === -1) {
+                    if (['name', 'endDate20DayRaw', 'endDate45DayRaw', 'associateIdInternal'].includes(key)) { 
+                        missingCritical.push(colConfig[key]);
+                    } else { 
+                        missingOptional.push(colConfig[key]);
+                    }
+                }
+            }
+            if (missingCritical.length > 0) { showError(`CSV must contain critical columns: ${missingCritical.join(', ')}.`); clearAllData(); return; }
+            if (missingOptional.length > 0) console.warn(`Optional columns not found: "${missingOptional.join(', ')}".`);
+            if (colIndices.edName === -1) console.warn(`"ED Name" column not found. Grouping by ED will not be available.`);
+            
+            const rawData = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim() === '') continue;
+                const values = parseCSVLine(lines[i]);
+                const getVal = (k) => (colIndices[k] !== -1 && values.length > colIndices[k]) ? values[colIndices[k]] : undefined;
+                
+                if (getVal('name') && getVal('endDate20DayRaw') && getVal('endDate45DayRaw') && getVal('associateIdInternal')) {
+                    rawData.push({
+                        associateIdInternal: getVal('associateIdInternal'), 
+                        name: getVal('name'), 
+                        productionDateRaw: getVal('productionDate') || "0", 
+                        fsTrainingDateRaw: getVal('fsTrainingDate') || "0",
+                        endDate20DayRaw: getVal('endDate20DayRaw'), 
+                        endDate45DayRaw: getVal('endDate45DayRaw'),
+                        orgPremiumITD: getNumericValue(getVal('orgPremiumITD')), 
+                        personalMemberships: getNumericValue(getVal('personalMemberships')),
+                        persRecruitsITD: getNumericValue(getVal('persRecruitsITD')), 
+                        persPremiumITD: getNumericValue(getVal('persPremiumITD')),
+                        homePhone: getVal('homePhone') || '',
+                        edName: getVal('edName') || 'Unassigned' 
+                    });
+                } else { console.warn(`Skipping row ${i+1} due to missing critical data (Name, End Dates, or Associate ID).`); }
+            }
+            if (rawData.length === 0) { showError('No valid associate data found for processing.'); clearAllData(); return; }
+            
+            const processedAssociates = processAssociateData(rawData);
+            populateFocusArea(processedAssociates);
+            populateTable(processedAssociates);
+            focusAreaCard.classList.remove('hidden');
+        }
+        
+        function processAssociateData(rawData) {
+            const today = new Date(); today.setHours(0,0,0,0);
+            return rawData.map(assoc => {
+                const p = {...assoc}; 
+                p.productionDateObj = parseGenericDate(p.productionDateRaw);
+                p.fsTrainingDateObj = parseGenericDate(p.fsTrainingDateRaw);
+                p.actual20DayEndDateObj = parseGenericDate(p.endDate20DayRaw);
+                p.actual45DayEndDateObj = parseGenericDate(p.endDate45DayRaw);
+                p.daysLeft20Num = -1; p.daysLeft45Num = -1;
+                p.fsAttendedFor20DayStatus = "N/A (No End Date)"; p.fsAttendedFor45DayStatus = "N/A (No End Date)";
+
+                if (p.actual20DayEndDateObj) {
+                    const diff = p.actual20DayEndDateObj.getTime() - today.getTime();
+                    p.daysLeft20Num = Math.max(0, Math.floor(diff / 86400000) + (diff >= 0 ? 1 : 0));
+                    p.fsAttendedFor20DayStatus = p.fsTrainingDateObj && p.fsTrainingDateObj <= new Date(p.actual20DayEndDateObj).setHours(23,59,59,999) ? "Yes" : "No";
+                }
+                if (p.actual45DayEndDateObj) {
+                    const diff = p.actual45DayEndDateObj.getTime() - today.getTime();
+                    p.daysLeft45Num = Math.max(0, Math.floor(diff / 86400000) + (diff >= 0 ? 1 : 0));
+                    p.fsAttendedFor45DayStatus = p.fsTrainingDateObj && p.fsTrainingDateObj <= new Date(p.actual45DayEndDateObj).setHours(23,59,59,999) ? "Yes" : "No";
+                }
+                
+                p.currentMembers = p.personalMemberships; p.currentRecruits = p.persRecruitsITD;
+                p.neededMembersForOptA = Math.max(0, 3 - p.currentMembers); p.neededRecruitsForOptA = Math.max(0, 1 - p.currentRecruits);
+                p.neededMembersForOptB = Math.max(0, 5 - p.currentMembers);
+                p.production20DayMet = (p.neededMembersForOptA === 0 && p.neededRecruitsForOptA === 0) || (p.neededMembersForOptB === 0);
+
+                p.currentOrgPremium = p.orgPremiumITD; p.currentPersPremium = p.persPremiumITD;
+                p.neededFrontlineLegs = Math.max(0, 3 - p.currentRecruits);
+                p.neededOrgPremium = Math.max(0, 300 - p.currentOrgPremium);
+                p.neededPersPremium = Math.max(0, 500 - p.currentPersPremium);
+                p.premiumRequirement45DayMet = p.neededOrgPremium === 0 || p.neededPersPremium === 0;
+                p.production45DayMet = (p.neededFrontlineLegs === 0) && p.premiumRequirement45DayMet;
+                
+                p.fs20DayAttended = p.fsAttendedFor20DayStatus === "Yes";
+                p.fs45DayAttended = p.fsAttendedFor45DayStatus === "Yes";
+                p.isAnyProductionActivity20Day = p.currentMembers > 0 || p.currentRecruits > 0;
+                p.isAnyProductionActivity45Day = p.currentRecruits > 0 || p.currentOrgPremium > 0 || p.currentPersPremium > 0;
+                p.sanitizedHomePhone = sanitizePhoneNumber(p.homePhone); 
+                return p;
+            });
+        }
+
+        function formatStatusSpan(status) {
+            if (status === "Yes") return `<span class="status-yes">${status}</span>`;
+            if (status === "No") return `<span class="status-no">${status}</span>`;
+            return `<span class="status-na">${status}</span>`;
+        }
+
+        function populateEdGroup(parentContentElement, edName, associatesInEdGroup, getItemHTML) {
+            if (associatesInEdGroup.length === 0) return;
+
+            const edGroupDiv = document.createElement('div');
+            edGroupDiv.className = 'ed-group mb-3';
+
+            const header = document.createElement('h5'); 
+            header.className = 'ed-group-header collapsed'; 
+            header.innerHTML = `ED: ${edName} (${associatesInEdGroup.length}) <span class="toggle-arrow text-gray-500 text-xs">▼</span>`;
+            
+            const associateListUl = document.createElement('ul');
+            associateListUl.className = 'ed-associate-list list-none pl-4 mt-1 hidden'; 
+
+            associatesInEdGroup.forEach(a => {
+                associateListUl.innerHTML += getItemHTML(a);
+            });
+
+            edGroupDiv.appendChild(header);
+            edGroupDiv.appendChild(associateListUl);
+            parentContentElement.appendChild(edGroupDiv);
+        }
+
+
+        function populateFocusArea(associates) {
+            clearFocusArea(); 
+            
+            const urgentAssociatesByEd = {};
+            const closeToFSAssociatesByEd = {};
+            const closeToMgrAssociatesByEd = {};
+            const metReqAssociatesByEd = {};
+
+            associates.forEach(a => {
+                const ed = a.edName || 'Unassigned';
+                if (!urgentAssociatesByEd[ed]) urgentAssociatesByEd[ed] = [];
+                if (!closeToFSAssociatesByEd[ed]) closeToFSAssociatesByEd[ed] = [];
+                if (!closeToMgrAssociatesByEd[ed]) closeToMgrAssociatesByEd[ed] = [];
+                if (!metReqAssociatesByEd[ed]) metReqAssociatesByEd[ed] = [];
+
+                if ((a.daysLeft20Num > 0 && a.daysLeft20Num <= 7) || (a.daysLeft45Num > 0 && a.daysLeft45Num <= 7)) {
+                    urgentAssociatesByEd[ed].push(a);
+                }
+                const isCloseToFS = (a.currentMembers >= 2 || (a.currentMembers >= 1 && a.currentRecruits >= 1)) && !a.production20DayMet;
+                if (isCloseToFS && a.daysLeft20Num > 0) {
+                    closeToFSAssociatesByEd[ed].push(a);
+                }
+                const isCloseToManagerPremium = (a.currentOrgPremium >= 150 || a.currentPersPremium >= 150);
+                if (isCloseToManagerPremium && !a.production45DayMet && a.daysLeft45Num > 0) {
+                    closeToMgrAssociatesByEd[ed].push(a);
+                }
+                const metFS = a.production20DayMet && a.fs20DayAttended;
+                const metMgr = a.production45DayMet && a.fs45DayAttended;
+                if (metFS || metMgr) { 
+                    metReqAssociatesByEd[ed].push(a);
+                }
+            });
+
+            const phoneIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.578a1.5 1.5 0 01-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 006.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 011.767-1.052l3.578.716A1.5 1.5 0 0118 15.352V16.5a1.5 1.5 0 01-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 012.43 8.326 13.019 13.019 0 012 5V3.5z" clip-rule="evenodd" /></svg>`;
+            const messageIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M5 3.75A2.75 2.75 0 017.75 1h4.5A2.75 2.75 0 0115 3.75v.443c.57.123 1.07.348 1.5.642A3.249 3.249 0 0118.25 8v5.25A2.75 2.75 0 0115.5 16h-1.05a2.5 2.5 0 001.822-2.282l.138-.762a2.751 2.751 0 00-.23-1.503A2.75 2.75 0 0013.5 10H6.5a2.75 2.75 0 00-2.678 1.455A2.751 2.751 0 003.59 12.95l.138.762A2.5 2.5 0 005.55 16H4.5A2.75 2.75 0 011.75 13.25V8c0-.63.232-1.213.624-1.664.392-.451.932-.77 1.526-.942V3.75zm6.5 0v1.5h-3V3.75h3zM5 5.25v5.07a.75.75 0 01-.264.56L3.5 12.04A1.25 1.25 0 004.55 14h1.055l-.138-.762A1.25 1.25 0 016.5 12h7a1.25 1.25 0 011.032 1.238l-.138.762H15.5A1.25 1.25 0 0016.5 12.04l-1.236-1.21a.75.75 0 01-.264-.56V5.25H5z" clip-rule="evenodd" /></svg>`;
+
+            let totalUrgent = 0;
+            Object.keys(urgentAssociatesByEd).sort().forEach(ed => {
+                populateEdGroup(urgentDeadlinesContent, ed, urgentAssociatesByEd[ed], a => {
+                    totalUrgent++;
+                    const associateLinkID = `assoc-${a.associateIdInternal.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+                    let urgentText = '';
+                    let periodText = '';
+                    if (a.daysLeft20Num > 0 && a.daysLeft20Num <= 7) {
+                        urgentText = `<span class="days-left-critical">${a.daysLeft20Num} days left</span>`;
+                        periodText = 'Fast Start';
+                    } else if (a.daysLeft45Num > 0 && a.daysLeft45Num <= 7) { // Prioritize 20-day if both are urgent
+                        urgentText = `<span class="days-left-critical">${a.daysLeft45Num} days left</span>`;
+                        periodText = 'Manager';
+                    }
+                    
+                    const messageBody = `${a.name}, I was reaching out to inform you that you have ${urgentText.replace(/<[^>]+>/g, '')} to complete your ${periodText}. Let's talk so I can help you.`;
+                    const callBtn = a.sanitizedHomePhone ? `<a href="tel:${a.sanitizedHomePhone}" aria-label="Call ${a.name}" class="action-btn call-now-btn">${phoneIconSVG}</a>` : '';
+                    const textBtn = a.sanitizedHomePhone ? `<a href="sms:${a.sanitizedHomePhone}?body=${encodeURIComponent(messageBody)}" aria-label="Text ${a.name}" class="action-btn text-now-btn">${messageIconSVG}</a>` : '';
+                    
+                    return `<li><span class="focus-text-content"><a href="#" data-target-id="${associateLinkID}" class="focus-link">${a.name}</a>: ${urgentText} (${periodText}). ${a.homePhone ? `(${a.homePhone})` : ''}</span> ${callBtn} ${textBtn}</li>`;
+                });
+            });
+            noUrgentDeadlines.classList.toggle('hidden', totalUrgent > 0);
+
+            let totalCloseFS = 0;
+            Object.keys(closeToFSAssociatesByEd).sort().forEach(ed => {
+                populateEdGroup(closeToFastStartContent, ed, closeToFSAssociatesByEd[ed], a => {
+                    totalCloseFS++;
+                    const associateLinkID = `assoc-${a.associateIdInternal.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+                    let neededTextFS = "";
+                    let needsOptAParts = [];
+                    if (a.neededMembersForOptA > 0) needsOptAParts.push(`${a.neededMembersForOptA} mem`);
+                    if (a.neededRecruitsForOptA > 0) needsOptAParts.push(`${a.neededRecruitsForOptA} rec`);
+                    let optAString = needsOptAParts.length > 0 ? `${needsOptAParts.join(' & ')} (Opt A)` : "";
+                    let optBString = a.neededMembersForOptB > 0 ? `${a.neededMembersForOptB} mem (Opt B)` : "";
+                    if (optAString && optBString) neededTextFS = `${optAString} OR ${optBString}`;
+                    else if (optAString) neededTextFS = `${optAString}`; else if (optBString) neededTextFS = `${optBString}`;
+                    else neededTextFS = "Review 20-Day details";
+                    
+                    const messageBody = `${a.name}, I was reaching out to inform you that you are close to your Fast Start. You only need ${neededTextFS.replace(/\(Opt [AB]\)/g, '').trim()}. You still have ${a.daysLeft20Num} days left. Let's talk so I can help you.`;
+                    const callBtn = a.sanitizedHomePhone ? `<a href="tel:${a.sanitizedHomePhone}" aria-label="Call ${a.name}" class="action-btn call-now-btn">${phoneIconSVG}</a>` : '';
+                    const textBtn = a.sanitizedHomePhone ? `<a href="sms:${a.sanitizedHomePhone}?body=${encodeURIComponent(messageBody)}" aria-label="Text ${a.name}" class="action-btn text-now-btn">${messageIconSVG}</a>` : '';
+                    return `<li><span class="focus-text-content"><a href="#" data-target-id="${associateLinkID}" class="focus-link">${a.name}</a>: Needs: ${neededTextFS}. <span class="${a.daysLeft20Num <=7 ? 'days-left-critical':'days-left-warning'}">${a.daysLeft20Num} days left</span>. ${a.homePhone ? `(${a.homePhone})` : ''}</span> ${callBtn} ${textBtn}</li>`;
+                });
+            });
+            noCloseToFastStart.classList.toggle('hidden', totalCloseFS > 0);
+            
+            let totalCloseMgr = 0;
+            Object.keys(closeToMgrAssociatesByEd).sort().forEach(ed => {
+                populateEdGroup(closeToManagerContent, ed, closeToMgrAssociatesByEd[ed], a => {
+                    totalCloseMgr++;
+                    const associateLinkID = `assoc-${a.associateIdInternal.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+                    let neededTextMgrParts = [];
+                    if (a.neededFrontlineLegs > 0) neededTextMgrParts.push(`${a.neededFrontlineLegs} legs`);
+                    if (!a.premiumRequirement45DayMet) {
+                        neededTextMgrParts.push(`(\$${a.neededOrgPremium.toFixed(2)} Org Prem OR \$${a.neededPersPremium.toFixed(2)} Pers Prem)`);
+                    } else if (a.neededFrontlineLegs > 0) {
+                        neededTextMgrParts.push(`Premium met`);
+                    }
+                    const neededTextMgr = neededTextMgrParts.join('. ') + (neededTextMgrParts.length > 0 ? '.' : '');
+
+                    const messageBody = `${a.name}, I was reaching out to inform you that you are close to your Manager promotion. You only need ${neededTextMgr.replace(/\(\$\d+\.\d{2} Org Prem OR \$\d+\.\d{2} Pers Prem\)/g, 'some premium').replace('Premium met.', 'the premium requirement met')}. You still have ${a.daysLeft45Num} days left. Let's talk so I can help you.`;
+                    const callBtn = a.sanitizedHomePhone ? `<a href="tel:${a.sanitizedHomePhone}" aria-label="Call ${a.name}" class="action-btn call-now-btn">${phoneIconSVG}</a>` : '';
+                    const textBtn = a.sanitizedHomePhone ? `<a href="sms:${a.sanitizedHomePhone}?body=${encodeURIComponent(messageBody)}" aria-label="Text ${a.name}" class="action-btn text-now-btn">${messageIconSVG}</a>` : '';
+                    return `<li><span class="focus-text-content"><a href="#" data-target-id="${associateLinkID}" class="focus-link">${a.name}</a>: Needs: ${neededTextMgr} <span class="${a.daysLeft45Num <=7 ? 'days-left-critical':'days-left-warning'}">${a.daysLeft45Num} days left</span>. ${a.homePhone ? `(${a.homePhone})` : ''}</span> ${callBtn} ${textBtn}</li>`;
+                });
+            });
+            noCloseToManager.classList.toggle('hidden', totalCloseMgr > 0);
+
+            let totalMetReq = 0;
+            Object.keys(metReqAssociatesByEd).sort().forEach(ed => {
+                populateEdGroup(metRequirementsContent, ed, metReqAssociatesByEd[ed], a => {
+                    totalMetReq++;
+                    const associateLinkID = `assoc-${a.associateIdInternal.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+                    const metFS = a.production20DayMet && a.fs20DayAttended;
+                    const metMgr = a.production45DayMet && a.fs45DayAttended;
+                    let metText = "";
+                    let metForSms = "";
+                    if (metFS && metMgr) {metText = "Met Fast Start & Manager requirements."; metForSms = "Fast Start & Manager requirements";}
+                    else if (metFS) {metText = "Met Fast Start requirements."; metForSms = "Fast Start requirements";}
+                    else if (metMgr) {metText = "Met Manager requirements."; metForSms = "Manager requirements";}
+                    
+                    const messageBody = `Congratulations ${a.name} for meeting the requirements of ${metForSms} in your LegalShield business!`;
+                    const callBtn = a.sanitizedHomePhone ? `<a href="tel:${a.sanitizedHomePhone}" aria-label="Call ${a.name}" class="action-btn call-now-btn">${phoneIconSVG}</a>` : '';
+                    const textBtn = a.sanitizedHomePhone ? `<a href="sms:${a.sanitizedHomePhone}?body=${encodeURIComponent(messageBody)}" aria-label="Text ${a.name}" class="action-btn text-now-btn">${messageIconSVG}</a>` : '';
+                    return `<li><span class="focus-text-content"><a href="#" data-target-id="${associateLinkID}" class="focus-link">${a.name}</a>: ${metText} ${a.homePhone ? `(${a.homePhone})` : ''}</span> ${callBtn} ${textBtn}</li>`;
+                });
+            });
+            noMetRequirements.classList.toggle('hidden', totalMetReq > 0); 
+        }
+
+
+        function determineCellColor(isProductionMet, isAnyRelevantActivity, isFSAttended) {
+            if (isProductionMet) return 'cell-green';
+            if (!isAnyRelevantActivity && !isFSAttended) return 'cell-red';
+            return 'cell-yellow';
+        }
+
+        function populateTable(associates) {
+            clearTableContent();
+            calculationDateInfo.textContent = `Days Left calculations are based on today's date: ${formatDate(new Date())}`;
+            calculationDateInfo.classList.remove('hidden');
+            if (associates.length === 0) {
+                 associatesTableBody.innerHTML = `<tr><td colspan="9" class="no-data-message">Upload a CSV file to see associate data.</td></tr>`; return;
+            }
+
+            const columnLabels = [ 
+                "Name", "Prod. Date", "FS Training Date", "Fast Start Days Left",
+                "20-Day Target", "Home Phone", "Manager Days Left", "45-Day Target", 
+                "FS Attended (20/45 Day)?"
+            ];
+
+            associates.forEach(a => {
+                const associateRowID = `assoc-${a.associateIdInternal.replace(/[^a-zA-Z0-9-_]/g, '')}`; 
+
+                const color20Day = determineCellColor(a.production20DayMet, a.isAnyProductionActivity20Day, a.fs20DayAttended);
+                const color45Day = determineCellColor(a.production45DayMet, a.isAnyProductionActivity45Day, a.fs45DayAttended);
+                
+                let target20HTML = `<strong><u>20-Day Sr. Associate:</u></strong><br>${a.production20DayMet ? '<span class="met">Target Met!</span>' : `<strong>Opt A:</strong> Need <span class="${a.neededMembersForOptA > 0 ?'needed':'met'}">${a.neededMembersForOptA}</span>m & <span class="${a.neededRecruitsForOptA > 0 ?'needed':'met'}">${a.neededRecruitsForOptA}</span>r.<br><strong>Opt B:</strong> Need <span class="${a.neededMembersForOptB > 0 ?'needed':'met'}">${a.neededMembersForOptB}</span>m.`}<br><strong>FS Deadline:</strong> ${a.actual20DayEndDateObj ? formatDate(a.actual20DayEndDateObj) : 'N/A'}.`;
+                let target45HTML = `<strong><u>45-Day Manager:</u></strong><br>${a.production45DayMet ? '<span class="met">Target Met!</span>' : `Need <span class="${a.neededFrontlineLegs > 0 ?'needed':'met'}">${a.neededFrontlineLegs}</span> legs.<br>${!a.premiumRequirement45DayMet ? `<strong>AND</strong> (\$${a.neededOrgPremium.toFixed(2)} Org OR \$${a.neededPersPremium.toFixed(2)} Pers).` : (a.neededFrontlineLegs > 0 ? '<strong>AND</strong> <span class="met">Premium met.</span>' : '')}`}<br><strong>FS Deadline:</strong> ${a.actual45DayEndDateObj ? formatDate(a.actual45DayEndDateObj) : 'N/A'}.`;
+
+                const row = associatesTableBody.insertRow();
+                row.id = associateRowID; 
+
+                const phoneContent = a.sanitizedHomePhone 
+                    ? `<a href="tel:${a.sanitizedHomePhone}" class="table-phone-link">${a.homePhone || "N/A"}</a>`
+                    : (a.homePhone || "N/A");
+
+                const cellsData = [ 
+                    { content: a.name, colorClass: color20Day, isSticky: true, label: columnLabels[0] }, 
+                    { content: a.productionDateObj ? formatDate(a.productionDateObj) : "N/A", colorClass: color20Day, label: columnLabels[1] },
+                    { content: a.fsTrainingDateObj ? formatDate(a.fsTrainingDateObj) : "N/A", colorClass: color20Day, label: columnLabels[2] },
+                    { content: a.daysLeft20Num !== -1 ? a.daysLeft20Num.toString() : "N/A", colorClass: color20Day, daysLeft: a.daysLeft20Num, label: columnLabels[3] },
+                    { content: target20HTML, colorClass: color20Day, isWrap: true, label: columnLabels[4] },
+                    { content: phoneContent, colorClass: color20Day, label: columnLabels[5] }, 
+                    { content: a.daysLeft45Num !== -1 ? a.daysLeft45Num.toString() : "N/A", colorClass: color45Day, daysLeft: a.daysLeft45Num, label: columnLabels[6] },
+                    { content: target45HTML, colorClass: color45Day, isWrap: true, label: columnLabels[7] },
+                    { content: `${formatStatusSpan(a.fsAttendedFor20DayStatus)} / ${formatStatusSpan(a.fsAttendedFor45DayStatus)}`, colorClass: color45Day, label: columnLabels[8] }
+                ];
+
+                cellsData.forEach(data => { 
+                    const cell = row.insertCell();
+                    cell.innerHTML = data.content;
+                    cell.setAttribute('data-label', data.label); 
+                    cell.classList.add(data.colorClass); 
+                    if (data.isSticky) {
+                        cell.classList.add('td-sticky-left'); 
+                    }
+                    if (data.isWrap && window.innerWidth >= 768) { 
+                         cell.classList.add('wrap');
+                    }
+                    if (data.daysLeft !== undefined && data.daysLeft > 0) {
+                        if (data.daysLeft <= 7) cell.classList.add('days-left-critical');
+                        else if (data.daysLeft <= 14) cell.classList.add('days-left-warning');
+                    }
+                });
+            });
+        }
+
+        function formatDate(date) {
+            if (!date || !(date instanceof Date) || isNaN(date)) return "N/A";
+            const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, '0'); const day = String(date.getDate()).padStart(2, '0');
+            return `${month}/${day}/${year}`;
+        }
+        function clearTable() { associatesTableBody.innerHTML = `<tr><td colspan="9" class="no-data-message">Upload a CSV file to see associate data.</td></tr>`; } 
+        function clearTableContent() { associatesTableBody.innerHTML = ''; }
+        
+        function clearFocusArea() {
+            urgentDeadlinesContent.innerHTML = ''; 
+            closeToFastStartContent.innerHTML = ''; 
+            closeToManagerContent.innerHTML = '';
+            metRequirementsContent.innerHTML = ''; 
+            noUrgentDeadlines.classList.add('hidden'); 
+            noCloseToFastStart.classList.add('hidden'); 
+            noCloseToManager.classList.add('hidden');
+            noMetRequirements.classList.add('hidden'); 
+        }
+
+        function showError(message) { errorDisplay.textContent = message; errorDisplay.classList.remove('hidden'); }
+        function hideError() { errorDisplay.classList.add('hidden'); errorDisplay.textContent = ''; }
+    </script>
+</body>
+</html>
